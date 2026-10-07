@@ -1,0 +1,4 @@
+1|ADMIN|Admin|admin@fitlife.com|admin123|1
+3|MEMBER|sean|sean@gmail.com|sean123|50|15.0|170.0|5
+4|MEMBER|irl|irl@gmail.com|irl123|75|59.0|189.0|0
+5|TRAINER|bentot|totben@gmail.com|tot123|strength
