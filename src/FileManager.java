@@ -44,6 +44,12 @@ public class FileManager {
         }
     }
 
+    /** Saves any Storable object (User, Workout, FitnessGoal, BodyMeasurement, FitnessReport). */
+    public void append(Storable item) { append(item.toFileString()); }
+
+    /** Replaces the saved line that has the same ID as this Storable object. */
+    public void update(Storable item) { update(item.getId(), item.toFileString()); }
+
     public void update(int id, String newLine) {
         List<String> lines = readAll();
         for (int i = 0; i < lines.size(); i++)

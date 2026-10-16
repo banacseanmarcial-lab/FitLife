@@ -1,0 +1,2 @@
+1|3|2026-10-16|Workouts: 0 (0 min, 0 kcal). Goals achieved: 0 of 1. BMI 22.5 -> 22.5 (change +0.0).
+2|3|2026-10-16|Workouts: 0 (0 min, 0 kcal). Goals achieved: 0 of 1. BMI 22.5 -> 22.5 (change +0.0).

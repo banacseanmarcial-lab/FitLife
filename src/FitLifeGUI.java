@@ -1,7 +1,18 @@
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,8 +27,16 @@ import java.util.function.Supplier;
  * console version and the GUI share the same data/*.txt files.
  */
 public class FitLifeGUI extends JFrame {
+    // ---- colour theme ----
     private static final Color GREEN = new Color(30, 130, 90);
-    private static final Color LIGHT = new Color(240, 247, 243);
+    private static final Color DARK = new Color(12, 84, 62);
+    private static final Color TEAL = new Color(26, 150, 140);
+    private static final Color LIGHT = new Color(239, 246, 242);
+    private static final Color STRIPE = new Color(246, 250, 248);
+    private static final Color LINE = new Color(208, 221, 214);
+    private static final Color INK = new Color(30, 48, 41);
+    private static final Color MUTED = new Color(95, 114, 106);
+    private static final Color DANGER = new Color(190, 62, 52);
 
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
@@ -29,9 +48,11 @@ public class FitLifeGUI extends JFrame {
         setSize(980, 680);
         setMinimumSize(new Dimension(820, 560));
         setLocationRelativeTo(null);
+        setIconImage(Logo.image(64));
 
         root.add(buildLoginPanel(), "login");
         add(root);
+        Theme.apply(root);
         cards.show(root, "login");
     }
 
@@ -51,6 +72,7 @@ public class FitLifeGUI extends JFrame {
             root.remove(dashboard);
         }
         dashboard = buildDashboard(u);
+        Theme.apply(dashboard);
         root.add(dashboard, "dashboard");
         cards.show(root, "dashboard");
         root.revalidate();
@@ -61,18 +83,29 @@ public class FitLifeGUI extends JFrame {
     // Login and register
     // =====================================================================
     private JPanel buildLoginPanel() {
-        JPanel outer = new JPanel(new GridBagLayout());
-        outer.setBackground(LIGHT);
+        JPanel outer = new GradientPanel(DARK, TEAL, true);
+        outer.setLayout(new GridBagLayout());
 
         JLabel title = new JLabel("FitLife", SwingConstants.CENTER);
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 36f));
-        title.setForeground(GREEN);
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 34f));
+        title.setForeground(DARK);
         JLabel sub = new JLabel("Fitness and Health Monitoring System", SwingConstants.CENTER);
-        sub.setForeground(Color.DARK_GRAY);
-        JPanel titles = new JPanel(new GridLayout(2, 1, 0, 2));
+        sub.setForeground(MUTED);
+        JLabel tagline = new JLabel("Move more. Track everything. Live better.", SwingConstants.CENTER);
+        tagline.setForeground(GREEN);
+        tagline.setFont(tagline.getFont().deriveFont(Font.ITALIC, 13f));
+        JPanel logoRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        logoRow.setOpaque(false);
+        logoRow.add(new Logo(68));
+        JPanel words = new JPanel(new GridLayout(3, 1, 0, 2));
+        words.setOpaque(false);
+        words.add(title);
+        words.add(sub);
+        words.add(tagline);
+        JPanel titles = new JPanel(new BorderLayout(0, 6));
         titles.setOpaque(false);
-        titles.add(title);
-        titles.add(sub);
+        titles.add(logoRow, BorderLayout.NORTH);
+        titles.add(words, BorderLayout.CENTER);
 
         JTextField email = new JTextField(22);
         JPasswordField password = new JPasswordField(22);
@@ -87,19 +120,12 @@ public class FitLifeGUI extends JFrame {
         buttons.add(login);
         buttons.add(register);
 
-        JLabel hint = new JLabel("Demo admin: admin@fitlife.com / admin123", SwingConstants.CENTER);
-        hint.setForeground(Color.GRAY);
-        hint.setFont(hint.getFont().deriveFont(12f));
-        JPanel south = new JPanel(new GridLayout(2, 1, 0, 6));
+        JPanel south = new JPanel(new GridLayout(1, 1));
         south.setOpaque(false);
         south.add(buttons);
-        south.add(hint);
 
-        JPanel box = new JPanel(new BorderLayout(0, 14));
-        box.setBackground(Color.WHITE);
-        box.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(210, 220, 215)),
-                BorderFactory.createEmptyBorder(28, 36, 24, 36)));
+        JPanel box = new CardPanel(new BorderLayout(0, 16));
+        box.setBorder(BorderFactory.createEmptyBorder(30, 40, 28, 40));
         box.add(titles, BorderLayout.NORTH);
         box.add(form, BorderLayout.CENTER);
         box.add(south, BorderLayout.SOUTH);
@@ -197,12 +223,18 @@ public class FitLifeGUI extends JFrame {
         updateWelcome.run();
 
         JButton logout = new JButton("Logout");
+        logout.putClientProperty("variant", "ghost");
         logout.addActionListener(e -> showLogin());
 
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(GREEN);
+        JPanel brand = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        brand.setOpaque(false);
+        brand.add(new Logo(36));
+        brand.add(welcome);
+
+        JPanel header = new GradientPanel(DARK, TEAL, false);
+        header.setLayout(new BorderLayout());
         header.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
-        header.add(welcome, BorderLayout.WEST);
+        header.add(brand, BorderLayout.WEST);
         header.add(logout, BorderLayout.EAST);
 
         JTabbedPane tabs = new JTabbedPane();
@@ -290,12 +322,14 @@ public class FitLifeGUI extends JFrame {
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(save);
-        JPanel content = new JPanel(new BorderLayout(0, 10));
-        content.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        form.setOpaque(false);
+        buttons.setOpaque(false);
+        JPanel content = new CardPanel(new BorderLayout(0, 10));
+        content.setBorder(BorderFactory.createEmptyBorder(24, 28, 22, 28));
         content.add(form, BorderLayout.CENTER);
         content.add(buttons, BorderLayout.SOUTH);
 
-        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 18));
         wrapper.add(content);
         return wrapper;
     }
@@ -428,23 +462,84 @@ public class FitLifeGUI extends JFrame {
                 null, null);
     }
 
+    // Goal types a member can pick: name, unit, and a hint that says what to enter
+    private static final String[][] GOAL_TYPES = {
+            {"Target Weight", "kg", "The body weight you want to reach. Example: 60"},
+            {"Weekly Workouts", "workouts per week", "How many workouts you want to finish every week. Example: 4"},
+            {"Weekly Workout Minutes", "min per week", "Total exercise minutes you want each week. Example: 150"},
+            {"Run Distance", "km", "How far you want to run in one go. Example: 5"},
+            {"Daily Calories Burned", "kcal", "Calories you want to burn in a day. Example: 400"},
+            {"Target BMI", "BMI", "The BMI you want to reach (normal is 18.5 to 24.9). Example: 22"}
+    };
+    private static final String OTHER_GOAL = "Other (write your own)";
+
+    private static String goalLabel(int i) {
+        return GOAL_TYPES[i][0] + " (" + GOAL_TYPES[i][1] + ")";
+    }
+
     private void goalForm(Member m, FitnessGoal g) {
-        JTextField type = new JTextField(g == null ? "" : g.getGoalType(), 18);
+        String[] names = new String[GOAL_TYPES.length + 1];
+        for (int i = 0; i < GOAL_TYPES.length; i++) {
+            names[i] = GOAL_TYPES[i][0];
+        }
+        names[GOAL_TYPES.length] = OTHER_GOAL;
+
+        JComboBox<String> typeBox = new JComboBox<>(names);
+        JTextField custom = new JTextField(18);
         JTextField target = new JTextField(g == null ? "" : String.valueOf(g.getTargetValue()), 18);
         JComboBox<String> status = new JComboBox<>(new String[]{"In Progress", "Achieved"});
+        JLabel hint = new JLabel();
+        hint.setForeground(new Color(30, 110, 80));
+
         if (g != null) {
+            // editing: show the saved goal type, or "Other" if it was written by hand
+            typeBox.setSelectedIndex(GOAL_TYPES.length);
+            custom.setText(g.getGoalType());
+            for (int i = 0; i < GOAL_TYPES.length; i++) {
+                if (g.getGoalType().equals(goalLabel(i))) {
+                    typeBox.setSelectedIndex(i);
+                    custom.setText("");
+                }
+            }
             status.setSelectedItem(g.getStatus());
         }
-        JPanel form = formOf("Goal type (e.g. Target Weight)", type, "Target value", target, "Status", status);
+
+        Runnable updateHint = () -> {
+            int i = typeBox.getSelectedIndex();
+            boolean other = i == GOAL_TYPES.length;
+            custom.setEnabled(other);
+            if (other) {
+                hint.setText("<html><div style='width:250px'>Write your own goal in the box above, "
+                        + "then the number you want to reach.</div></html>");
+            } else {
+                hint.setText("<html><div style='width:250px'><b>Unit: " + GOAL_TYPES[i][1] + "</b><br>"
+                        + GOAL_TYPES[i][2] + "</div></html>");
+            }
+        };
+        typeBox.addActionListener(e -> updateHint.run());
+        updateHint.run();
+
+        JPanel form = formOf("What is your goal?", typeBox, "Your own goal", custom,
+                "What to enter", hint, "Target value", target, "Status", status);
 
         showForm(g == null ? "Add goal" : "Edit goal", form, () -> {
+            int i = typeBox.getSelectedIndex();
+            String type;
+            if (i == GOAL_TYPES.length) {
+                type = text(custom);
+                if (type.isEmpty()) {
+                    throw new IllegalArgumentException("Please write your goal in the 'Your own goal' box.");
+                }
+            } else {
+                type = goalLabel(i);
+            }
             double t = Double.parseDouble(target.getText().trim());
             String s = (String) status.getSelectedItem();
             if (g == null) {
-                FitnessGoal n = new FitnessGoal(Main.goals.nextId(), m.getId(), text(type), t, s);
+                FitnessGoal n = new FitnessGoal(Main.goals.nextId(), m.getId(), type, t, s);
                 Main.goals.append(n.toFileString());
             } else {
-                g.setGoalType(text(type));
+                g.setGoalType(type);
                 g.setTargetValue(t);
                 g.setStatus(s);
                 Main.goals.update(g.getId(), g.toFileString());
@@ -743,6 +838,7 @@ public class FitLifeGUI extends JFrame {
                 dialog.dispose();
                 load.run();
             }));
+            Theme.apply(dialog.getContentPane());
             dialog.pack();
             dialog.setLocationRelativeTo(this);
             dialog.setVisible(true);
@@ -901,6 +997,7 @@ public class FitLifeGUI extends JFrame {
 
     /** Shows a form in a dialog; keeps it open with the typed values until it saves or is cancelled. */
     private boolean showForm(String title, JComponent form, Runnable saver) {
+        Theme.apply(form);
         while (true) {
             int result = JOptionPane.showConfirmDialog(this, form, title,
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -966,6 +1063,362 @@ public class FitLifeGUI extends JFrame {
     }
 
     // =====================================================================
+    // Look and feel (only drawing code, no program logic)
+    // =====================================================================
+
+    /** Smooth two-colour background (diagonal for the login page, left-to-right for the header). */
+    static class GradientPanel extends JPanel {
+        private final Color from, to;
+        private final boolean diagonal;
+
+        GradientPanel(Color from, Color to, boolean diagonal) {
+            this.from = from;
+            this.to = to;
+            this.diagonal = diagonal;
+            setOpaque(true);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setPaint(new GradientPaint(0, 0, from, diagonal ? getWidth() : getWidth(),
+                    diagonal ? getHeight() : 0, to));
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            if (diagonal) { // soft decorative circles
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(255, 255, 255, 18));
+                g2.fillOval(-120, getHeight() - 260, 380, 380);
+                g2.fillOval(getWidth() - 260, -140, 420, 420);
+                g2.setColor(new Color(255, 255, 255, 12));
+                g2.fillOval(getWidth() - 140, getHeight() - 160, 220, 220);
+            }
+            g2.dispose();
+        }
+    }
+
+    /** White rounded card with a soft shadow. */
+    static class CardPanel extends JPanel {
+        CardPanel(LayoutManager layout) {
+            super(layout);
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth() - 8, h = getHeight() - 8;
+            for (int i = 4; i >= 1; i--) { // shadow
+                g2.setColor(new Color(0, 40, 25, 10));
+                g2.fill(new RoundRectangle2D.Double(4 - i, 4 - i + 3, w + 2 * i, h + 2 * i, 24, 24));
+            }
+            g2.setColor(Color.WHITE);
+            g2.fill(new RoundRectangle2D.Double(4, 4, w, h, 22, 22));
+            g2.setColor(LINE);
+            g2.draw(new RoundRectangle2D.Double(4, 4, w, h, 22, 22));
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getInsets() {
+            Insets i = super.getInsets();
+            return new Insets(i.top + 4, i.left + 4, i.bottom + 4, i.right + 4);
+        }
+    }
+
+    /** Small logo: green circle with a heartbeat line. */
+    static class Logo extends JComponent {
+        private final int size;
+
+        Logo(int size) {
+            this.size = size;
+            setPreferredSize(new Dimension(size, size));
+            setOpaque(false);
+        }
+
+        static void draw(Graphics2D g2, int s) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setPaint(new GradientPaint(0, 0, new Color(46, 170, 112), s, s, new Color(14, 110, 100)));
+            g2.fillOval(0, 0, s - 1, s - 1);
+            g2.setColor(new Color(255, 255, 255, 60));
+            g2.setStroke(new BasicStroke(Math.max(1f, s / 32f)));
+            g2.drawOval(2, 2, s - 5, s - 5);
+            double[][] pts = {{.18, .56}, {.35, .56}, {.43, .30}, {.55, .76}, {.64, .46}, {.70, .56}, {.82, .56}};
+            Path2D path = new Path2D.Double();
+            for (int i = 0; i < pts.length; i++) {
+                if (i == 0) {
+                    path.moveTo(pts[i][0] * s, pts[i][1] * s);
+                } else {
+                    path.lineTo(pts[i][0] * s, pts[i][1] * s);
+                }
+            }
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(Math.max(2f, s / 14f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(path);
+        }
+
+        static Image image(int s) {
+            BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2 = img.createGraphics();
+            draw(g2, s);
+            g2.dispose();
+            return img;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            draw(g2, size);
+            g2.dispose();
+        }
+    }
+
+    /** Rounded buttons: filled green (main action), outlined (normal), red outline (delete), white outline (logout). */
+    static class PillButtonUI extends BasicButtonUI {
+        private final String variant;
+
+        PillButtonUI(String variant) {
+            this.variant = variant;
+        }
+
+        @Override
+        public void paint(Graphics g, JComponent c) {
+            AbstractButton b = (AbstractButton) c;
+            ButtonModel m = b.getModel();
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = c.getWidth() - 1, h = c.getHeight() - 1;
+            boolean on = b.isEnabled();
+            Color fill, edge;
+            switch (variant) {
+                case "primary" -> {
+                    fill = !on ? new Color(170, 200, 186) : m.isPressed() ? DARK : m.isRollover() ? new Color(24, 112, 78) : GREEN;
+                    edge = fill;
+                }
+                case "danger" -> {
+                    fill = m.isPressed() ? new Color(250, 225, 222) : m.isRollover() ? new Color(253, 238, 236) : Color.WHITE;
+                    edge = DANGER;
+                }
+                case "ghost" -> {
+                    fill = new Color(255, 255, 255, m.isPressed() ? 70 : m.isRollover() ? 45 : 0);
+                    edge = new Color(255, 255, 255, 190);
+                }
+                default -> {
+                    fill = m.isPressed() ? new Color(214, 236, 224) : m.isRollover() ? new Color(232, 244, 237) : Color.WHITE;
+                    edge = on ? GREEN : LINE;
+                }
+            }
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, w, h, 16, 16);
+            g2.setColor(edge);
+            g2.drawRoundRect(0, 0, w, h, 16, 16);
+            g2.dispose();
+            super.paint(g, c);
+        }
+
+        @Override
+        protected void paintFocus(Graphics g, AbstractButton b, Rectangle viewRect, Rectangle textRect, Rectangle iconRect) {
+            // no dotted focus box
+        }
+    }
+
+    /** Flat tabs: white strip, green underline on the selected tab. */
+    static class TabsUI extends BasicTabbedPaneUI {
+        @Override
+        protected void installDefaults() {
+            super.installDefaults();
+            tabInsets = new Insets(9, 18, 9, 18);
+            selectedTabPadInsets = new Insets(0, 0, 0, 0);
+            tabAreaInsets = new Insets(6, 10, 0, 10);
+            contentBorderInsets = new Insets(1, 0, 0, 0);
+        }
+
+        @Override
+        protected void paintTabBackground(Graphics g, int tp, int i, int x, int y, int w, int h, boolean sel) {
+            g.setColor(Color.WHITE);
+            g.fillRect(x, y, w, h);
+        }
+
+        @Override
+        protected void paintTabBorder(Graphics g, int tp, int i, int x, int y, int w, int h, boolean sel) {
+            if (sel) {
+                g.setColor(GREEN);
+                g.fillRect(x + 4, y + h - 3, w - 8, 3);
+            }
+        }
+
+        @Override
+        protected void paintText(Graphics g, int tp, Font font, FontMetrics fm, int i, String title,
+                                 Rectangle textRect, boolean sel) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setFont(sel ? font.deriveFont(Font.BOLD) : font);
+            g2.setColor(sel ? GREEN : MUTED);
+            g2.drawString(title, textRect.x, textRect.y + fm.getAscent());
+        }
+
+        @Override
+        protected void paintFocusIndicator(Graphics g, int tp, Rectangle[] rects, int i, Rectangle icon,
+                                           Rectangle text, boolean sel) {
+        }
+
+        @Override
+        protected void paintContentBorderTopEdge(Graphics g, int tp, int sel, int x, int y, int w, int h) {
+            g.setColor(LINE);
+            g.drawLine(x, y, x + w, y);
+        }
+
+        @Override
+        protected void paintContentBorderLeftEdge(Graphics g, int tp, int sel, int x, int y, int w, int h) {
+        }
+
+        @Override
+        protected void paintContentBorderRightEdge(Graphics g, int tp, int sel, int x, int y, int w, int h) {
+        }
+
+        @Override
+        protected void paintContentBorderBottomEdge(Graphics g, int tp, int sel, int x, int y, int w, int h) {
+        }
+    }
+
+    /** Walks through a finished screen once and gives its buttons, tabs, tables and fields the theme. */
+    static final class Theme {
+        private Theme() {
+        }
+
+        static void apply(Component c) {
+            if (c instanceof JButton b) {
+                styleButton(b);
+                return;
+            }
+            if (c instanceof JTable t) {
+                styleTable(t);
+                return;
+            }
+            if (c instanceof JScrollPane sp) {
+                sp.setBorder(BorderFactory.createLineBorder(LINE));
+                sp.getViewport().setBackground(Color.WHITE);
+                if (sp.getViewport().getView() != null) {
+                    apply(sp.getViewport().getView());
+                }
+                return;
+            }
+            if (c instanceof JComboBox<?> box) {
+                box.setBackground(Color.WHITE);
+                return;
+            }
+            if (c instanceof JTextField f) {
+                styleField(f);
+                return;
+            }
+            if (c instanceof JTabbedPane tabs) {
+                tabs.setUI(new TabsUI());
+                tabs.setBackground(Color.WHITE);
+                tabs.setOpaque(true);
+            }
+            if (c instanceof Container k) {
+                for (Component child : k.getComponents()) {
+                    apply(child);
+                }
+            }
+        }
+
+        private static void styleButton(JButton b) {
+            String variant = (String) b.getClientProperty("variant");
+            String t = b.getText() == null ? "" : b.getText().toLowerCase();
+            if (variant == null) {
+                if (t.startsWith("delete") || t.startsWith("remove")) {
+                    variant = "danger";
+                } else if (t.equals("login") || t.startsWith("save") || t.startsWith("add")
+                        || t.startsWith("generate") || t.startsWith("choose")) {
+                    variant = "primary";
+                } else {
+                    variant = "normal";
+                }
+            }
+            b.setUI(new PillButtonUI(variant));
+            b.setOpaque(false);
+            b.setContentAreaFilled(false);
+            b.setBorderPainted(false);
+            b.setFocusPainted(false);
+            b.setRolloverEnabled(true);
+            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            b.setBorder(new EmptyBorder(8, 18, 8, 18));
+            b.setForeground(switch (variant) {
+                case "primary", "ghost" -> Color.WHITE;
+                case "danger" -> DANGER;
+                default -> GREEN;
+            });
+            if (!variant.equals("normal") && !variant.equals("danger")) {
+                b.setFont(b.getFont().deriveFont(Font.BOLD));
+            }
+        }
+
+        private static void styleField(JTextField f) {
+            Border idle = BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(180, 198, 189)), new EmptyBorder(5, 8, 5, 8));
+            Border focus = BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(GREEN, 2), new EmptyBorder(4, 7, 4, 7));
+            f.setBorder(idle);
+            f.setBackground(Color.WHITE);
+            f.setForeground(INK);
+            f.setCaretColor(GREEN);
+            f.setSelectionColor(new Color(190, 228, 208));
+            f.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusGained(FocusEvent e) {
+                    f.setBorder(focus);
+                }
+
+                @Override
+                public void focusLost(FocusEvent e) {
+                    f.setBorder(idle);
+                }
+            });
+        }
+
+        private static void styleTable(JTable t) {
+            t.setRowHeight(32);
+            t.setShowGrid(false);
+            t.setIntercellSpacing(new Dimension(0, 0));
+            t.setFillsViewportHeight(true);
+            t.setBackground(Color.WHITE);
+            t.setForeground(INK);
+            t.setSelectionBackground(new Color(203, 234, 217));
+            t.setSelectionForeground(INK);
+            t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean sel,
+                                                               boolean focus, int row, int col) {
+                    super.getTableCellRendererComponent(table, value, sel, false, row, col);
+                    setBorder(new EmptyBorder(0, 10, 0, 10));
+                    if (!sel) {
+                        setBackground(row % 2 == 0 ? Color.WHITE : STRIPE);
+                        setForeground(INK);
+                    }
+                    return this;
+                }
+            });
+            JTableHeader header = t.getTableHeader();
+            header.setReorderingAllowed(false);
+            header.setPreferredSize(new Dimension(100, 36));
+            header.setDefaultRenderer(new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean sel,
+                                                               boolean focus, int row, int col) {
+                    super.getTableCellRendererComponent(table, value, false, false, row, col);
+                    setBackground(DARK);
+                    setForeground(Color.WHITE);
+                    setFont(getFont().deriveFont(Font.BOLD));
+                    setBorder(new EmptyBorder(0, 10, 0, 10));
+                    setHorizontalAlignment(SwingConstants.LEFT);
+                    return this;
+                }
+            });
+        }
+    }
+
+    // =====================================================================
     // Start the program
     // =====================================================================
     public static void main(String[] args) {
@@ -974,6 +1427,12 @@ public class FitLifeGUI extends JFrame {
         } catch (Exception ignored) {
             // falls back to the default look
         }
+        UIManager.put("Panel.background", LIGHT);
+        UIManager.put("OptionPane.background", LIGHT);
+        UIManager.put("Label.foreground", INK);
+        UIManager.put("OptionPane.messageForeground", INK);
+        UIManager.put("ScrollPane.background", LIGHT);
+        UIManager.put("Viewport.background", Color.WHITE);
         Font base = new Font("Segoe UI", Font.PLAIN, 14);
         for (Object key : Collections.list(UIManager.getDefaults().keys())) {
             if (UIManager.get(key) instanceof FontUIResource) {

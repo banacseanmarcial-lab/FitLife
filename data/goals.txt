@@ -1,1 +1,2 @@
 1|4|90|100.0|In Progress
+2|3|Weekly Workouts (workouts per week)|5.0|In Progress
